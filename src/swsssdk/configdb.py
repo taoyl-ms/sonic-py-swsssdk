@@ -71,9 +71,10 @@ class ConfigDBConnector(SonicV2Connector):
                 ...
             }
         """
-        for table_name, table_data in data.iteritems():
-            for key, value in table_data.iteritems():
-                self.set_table(table_name, key, value)
+        for table_name in data:
+            table_data = data[table_name]
+            for key in table_data:
+                self.set_table(table_name, key, table_data[key])
 
     def get_config(self):
         """Read all config data. 
