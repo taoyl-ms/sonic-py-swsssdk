@@ -47,7 +47,7 @@ class ConfigDBConnector(SonicV2Connector):
         """
         client = self.redis_clients[self.CONFIG_DB]
         _hash = '{}:{}'.format(table.upper(), key)
-        return client.hgetall(self, _hash)
+        return client.hgetall(_hash)
 
     def get_table(self, table):
         """Read an entire table from config db.
@@ -58,11 +58,12 @@ class ConfigDBConnector(SonicV2Connector):
             { 'row_key': {'column_key': 'value', ...}, ...}
             Empty dictionary if table does not exist.
         """
+        client = self.redis_clients[self.CONFIG_DB]
         pattern = '{}:*'.format(table.upper())
-        keys = SonicV2Connector.keys(self, self.CONFIG_DB, pattern)
+        keys = client.keys(pattern)
         data = {}
         for key in keys:
-            data[key.split(':')[1]] = SonicV2Connector.get_all(self, self.CONFIG_DB, key)
+            data[key.split(':')[1]] = client.hgetall(key)
         return data
 
     def set_config(self, data):
@@ -88,13 +89,14 @@ class ConfigDBConnector(SonicV2Connector):
                 ...
             }
         """
+        client = self.redis_clients[self.CONFIG_DB]
+        hashes = client.keys('*')
         data = {}
-        hashes = SonicV2Connector.keys(self, self.CONFIG_DB, '*')
         for _hash in hashes:
             table_name = _hash.split(':', 1)[0]
             key = _hash.split(':', 1)[1]
             if not data.has_key(table_name):
                 data[table_name] = {}
-            data[table_name][key] = SonicV2Connector.get_all(self, self.CONFIG_DB, _hash)
+            data[table_name][key] = client.hgetall(_hash)
         return data
 
