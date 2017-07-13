@@ -25,35 +25,38 @@ class ConfigDBConnector(SonicV2Connector):
     def connect(self):
         SonicV2Connector.connect(self, self.CONFIG_DB, False)
 
-    def set_table(self, table, key, data):
+    def set_entry(self, table, key, data):
         """Write a table entry to config db.
         Args:
             table: Table name.
-            key: Key of table row.
+            key: Key of table entry.
             data: Table row data in a form of dictionary {'column_key': 'value', ...}
         """
         client = self.redis_clients[self.CONFIG_DB]
         _hash = '{}:{}'.format(table.upper(), key)
         client.hmset(_hash, data)
 
-    def get_table(self, table, key):
+    def get_entry(self, table, key):
         """Read a table entry from config db.
         Args:
             table: Table name.
-            key: Key of table row.
+            key: Key of table entry.
         Returns: 
             Table row data in a form of dictionary {'column_key': 'value', ...}
+            Empty dictionary if table does not exist or entry does not exist.
         """
+        client = self.redis_clients[self.CONFIG_DB]
         _hash = '{}:{}'.format(table.upper(), key)
-        return SonicV2Connector.get_all(self, self.CONFIG_DB, _hash)
+        return client.hgetall(self, _hash)
 
-    def get_table_all(self, table):
+    def get_table(self, table):
         """Read an entire table from config db.
         Args:
             table: Table name.
         Returns: 
             Table data in a dictionary form of 
             { 'row_key': {'column_key': 'value', ...}, ...}
+            Empty dictionary if table does not exist.
         """
         pattern = '{}:*'.format(table.upper())
         keys = SonicV2Connector.keys(self, self.CONFIG_DB, pattern)
@@ -74,7 +77,7 @@ class ConfigDBConnector(SonicV2Connector):
         for table_name in data:
             table_data = data[table_name]
             for key in table_data:
-                self.set_table(table_name, key, table_data[key])
+                self.set_entry(table_name, key, table_data[key])
 
     def get_config(self):
         """Read all config data. 
