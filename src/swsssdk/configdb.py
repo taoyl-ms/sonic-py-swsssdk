@@ -61,6 +61,8 @@ class ConfigDBConnector(SonicV2Connector):
         client = self.redis_clients[self.CONFIG_DB]
         pattern = '{}:*'.format(table.upper())
         keys = client.keys(pattern)
+        if not keys:
+            return {}
         data = {}
         for key in keys:
             data[key.split(':')[1]] = client.hgetall(key)
@@ -91,6 +93,8 @@ class ConfigDBConnector(SonicV2Connector):
         """
         client = self.redis_clients[self.CONFIG_DB]
         hashes = client.keys('*')
+        if not hashes:
+            return {}
         data = {}
         for _hash in hashes:
             table_name = _hash.split(':', 1)[0]
