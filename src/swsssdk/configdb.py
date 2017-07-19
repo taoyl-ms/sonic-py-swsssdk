@@ -30,39 +30,28 @@ class ConfigDBConnector(SonicV2Connector):
     def connect(self):
         SonicV2Connector.connect(self, self.CONFIG_DB, False)
 
-    def add_handler(self, table, handler):
-        """Add a handler to handle config change in certain table.
+    def subscribe(self, table, handler):
+        """Set a handler to handle config change in certain table.
         Note that a single handler can be registered to different tables by 
         calling this fuction multiple times.
         Args:
             table: Table name.
             handler: a handler function that has signature of handler(table_name, key, data)
         """
-        if not self.handlers.has_key(table):
-            self.handlers[table] = set()
-        self.handlers[table].add(handler)
+        self.handlers[table] = handler
 
-    def remove_handler(self, table, handler):
-        """Remove a registered handler from a certain table.
+    def remove_handler(self, table):
+        """Remove registered handler from a certain table.
         Args:
             table: Table name.
-            handler: registered handler.
-        Raises:
-            ValueError: when the handler provided is not registered to the table.
         """
-        if not self.handlers.has_key(table):
-            raise ValueError("Handler is not binding to this table.")
-        try:
-            self.handlers[table].remove(handler)
-        except:
-            raise ValueError("Handler is not binding to this table.")
-        if len(self.handlers[table]) == 0:
-            self.handlers.pop(table, None)
+        if self.handlers.has_key(table):
+            self.handlers.pop(table)
 
     def __fire(self, table, key, data):
         if self.handlers.has_key(table):
-            for handlers in self.handlers[table]:
-                handlers(table, key, data)
+            handler = self.handlers[table]
+            handler(table, key, data)
 
     def listen(self):
         """Start listen Redis keyspace events and will trigger corresponding handlers when content of a table changes.
@@ -72,12 +61,14 @@ class ConfigDBConnector(SonicV2Connector):
         for item in self.pubsub.listen():
             if item['type'] == 'pmessage':
                 _hash = item['channel'].split(':', 1)[1]
-                table = _hash.split(':', 1)[0]
-                key = _hash.split(':', 1)[1]
-                if self.handlers.has_key(table):
-                    client = self.redis_clients[self.CONFIG_DB]
-                    data = client.hgetall(_hash)
-                    self.__fire(table, key, data)
+                tokens = _hash.split(':', 1)
+                if len(tokens) == 2:
+                    table = _hash.split(':', 1)[0]
+                    key = _hash.split(':', 1)[1]
+                    if self.handlers.has_key(table):
+                        client = self.redis_clients[self.CONFIG_DB]
+                        data = client.hgetall(_hash)
+                        self.__fire(table, key, data)
 
     def set_entry(self, table, key, data):
         """Write a table entry to config db.
@@ -117,7 +108,9 @@ class ConfigDBConnector(SonicV2Connector):
         keys = client.keys(pattern)
         data = {}
         for key in keys:
-            data[key.split(':')[1]] = client.hgetall(key)
+            tokens = key.split(':', 1)
+            if len(tokens) == 2:
+                data[tokens[1]] = client.hgetall(key)
         return data
 
     def set_config(self, data):
@@ -147,12 +140,12 @@ class ConfigDBConnector(SonicV2Connector):
         hashes = client.keys('*')
         data = {}
         for _hash in hashes:
-            table_name = _hash.split(':', 1)[0]
-            key = _hash.split(':', 1)[1]
-            if not data.has_key(table_name):
-                data[table_name] = {}
-            data[table_name][key] = client.hgetall(_hash)
+            tokens = _hash.split(':', 1)
+            if len(tokens) == 2:
+                table_name = _hash.split(':', 1)[0]
+                key = _hash.split(':', 1)[1]
+                if not data.has_key(table_name):
+                    data[table_name] = {}
+                data[table_name][key] = client.hgetall(_hash)
         return data
-        self.pubsub = self.redis_clients[self.CONFIG_DB].pubsub()
-        self.pubsub.psubscribe("__keyspace@{}__:*".format(self.db_map[self.CONFIG_DB]['db']))
 
