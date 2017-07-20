@@ -35,9 +35,10 @@ class ConfigDBConnector(SonicV2Connector):
             time.sleep(.1)
             initialized = client.get('CONFIG_DB_INITIALIZED')
 
-    def connect(self):
+    def connect(self, wait_for_init=True):
         SonicV2Connector.connect(self, self.CONFIG_DB, False)
-        self.__wait_for_db_init()
+        if wait_for_init:
+            self.__wait_for_db_init()
 
     def subscribe(self, table, handler):
         """Set a handler to handle config change in certain table.
