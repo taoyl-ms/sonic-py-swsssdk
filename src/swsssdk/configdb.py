@@ -18,6 +18,7 @@ Example:
 
 """
 
+import time
 from .dbconnector import SonicV2Connector
 
 class ConfigDBConnector(SonicV2Connector):
@@ -27,8 +28,16 @@ class ConfigDBConnector(SonicV2Connector):
         super(ConfigDBConnector, self).__init__(host='127.0.0.1')
         self.handlers = {}
 
+    def __wait_for_db_init(self):
+        client = self.redis_clients[self.CONFIG_DB]
+        initialized = client.get('CONFIG_DB_INITIALIZED')
+        while not initialized:
+            time.sleep(.1)
+            initialized = client.get('CONFIG_DB_INITIALIZED')
+
     def connect(self):
         SonicV2Connector.connect(self, self.CONFIG_DB, False)
+        self.__wait_for_db_init()
 
     def subscribe(self, table, handler):
         """Set a handler to handle config change in certain table.
