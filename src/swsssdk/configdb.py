@@ -50,7 +50,7 @@ class ConfigDBConnector(SonicV2Connector):
         """
         self.handlers[table] = handler
 
-    def remove_handler(self, table):
+    def unsubscribe(self, table):
         """Remove registered handler from a certain table.
         Args:
             table: Table name.
