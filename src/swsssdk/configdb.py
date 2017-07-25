@@ -77,8 +77,31 @@ class ConfigDBConnector(SonicV2Connector):
                     key = _hash.split(':', 1)[1]
                     if self.handlers.has_key(table):
                         client = self.redis_clients[self.CONFIG_DB]
-                        data = client.hgetall(_hash)
+                        data = self.__raw_to_typed(client.hgetall(_hash))
                         self.__fire(table, key, data)
+
+    def __raw_to_typed(self, raw_data):
+        if raw_data == None:
+            return None
+        typed_data = {}
+        for key in raw_data:
+            if key.endswith("@"):
+                typed_data[key[:-1]] = raw_data[key].split(',')
+            else:
+                typed_data[key] = raw_data[key]
+        return typed_data
+
+    def __typed_to_raw(self, typed_data):
+        if typed_data == None:
+            return None
+        raw_data = {}
+        for key in typed_data:
+            value = typed_data[key]
+            if type(value) is list:
+                raw_data[key+'@'] = ','.join(value)
+            else:
+                raw_data[key] = value
+        return raw_data
 
     def set_entry(self, table, key, data):
         """Write a table entry to config db.
@@ -89,7 +112,7 @@ class ConfigDBConnector(SonicV2Connector):
         """
         client = self.redis_clients[self.CONFIG_DB]
         _hash = '{}:{}'.format(table.upper(), key)
-        client.hmset(_hash, data)
+        client.hmset(_hash, self.__typed_to_raw(data))
 
     def get_entry(self, table, key):
         """Read a table entry from config db.
@@ -102,7 +125,7 @@ class ConfigDBConnector(SonicV2Connector):
         """
         client = self.redis_clients[self.CONFIG_DB]
         _hash = '{}:{}'.format(table.upper(), key)
-        return client.hgetall(_hash)
+        return self.__raw_to_typed(client.hgetall(_hash))
 
     def get_table(self, table):
         """Read an entire table from config db.
@@ -120,7 +143,7 @@ class ConfigDBConnector(SonicV2Connector):
         for key in keys:
             tokens = key.split(':', 1)
             if len(tokens) == 2:
-                data[tokens[1]] = client.hgetall(key)
+                data[tokens[1]] = self.__raw_to_typed(client.hgetall(key))
         return data
 
     def set_config(self, data):
@@ -156,6 +179,6 @@ class ConfigDBConnector(SonicV2Connector):
                 key = _hash.split(':', 1)[1]
                 if not data.has_key(table_name):
                     data[table_name] = {}
-                data[table_name][key] = client.hgetall(_hash)
+                data[table_name][key] = self.__raw_to_typed(client.hgetall(_hash))
         return data
 
