@@ -12,7 +12,7 @@ Example:
     # Daemon to watch config change in certain table:
     config_db = ConfigDBConnector()
     handler = lambda table, key, data: print (key, data)
-    config_db.add_handler('BGP_NEIGHBOR', handler)
+    config_db.subscribe('BGP_NEIGHBOR', handler)
     config_db.connect()
     config_db.listen()
 
@@ -23,6 +23,8 @@ from .dbconnector import SonicV2Connector
 
 class ConfigDBConnector(SonicV2Connector):
 
+    INIT_INDICATOR = 'CONFIG_DB_INITIALIZED'
+
     def __init__(self):
         # Connect to Redis through TCP, which does not requires root.
         super(ConfigDBConnector, self).__init__(host='127.0.0.1')
@@ -30,10 +32,20 @@ class ConfigDBConnector(SonicV2Connector):
 
     def __wait_for_db_init(self):
         client = self.redis_clients[self.CONFIG_DB]
-        initialized = client.get('CONFIG_DB_INITIALIZED')
-        while not initialized:
-            time.sleep(.1)
-            initialized = client.get('CONFIG_DB_INITIALIZED')
+        pubsub = client.pubsub()
+        initialized = client.get(self.INIT_INDICATOR)
+        if not initialized:
+            pattern = "__keyspace@{}__:{}".format(self.db_map[self.CONFIG_DB]['db'], self.INIT_INDICATOR)
+            pubsub.psubscribe(pattern)
+            for item in pubsub.listen():
+                if item['type'] == 'pmessage':
+                    key = item['channel'].split(':', 1)[1]
+                    if key == self.INIT_INDICATOR:
+                        initialized = client.get(self.INIT_INDICATOR)
+                        if initialized:
+                            break
+            pubsub.punsubscribe(pattern)
+
 
     def connect(self, wait_for_init=True):
         SonicV2Connector.connect(self, self.CONFIG_DB, False)
@@ -70,21 +82,23 @@ class ConfigDBConnector(SonicV2Connector):
         self.pubsub.psubscribe("__keyspace@{}__:*".format(self.db_map[self.CONFIG_DB]['db']))
         for item in self.pubsub.listen():
             if item['type'] == 'pmessage':
-                _hash = item['channel'].split(':', 1)[1]
-                tokens = _hash.split(':', 1)
-                if len(tokens) == 2:
-                    table = _hash.split(':', 1)[0]
-                    key = _hash.split(':', 1)[1]
+                key = item['channel'].split(':', 1)[1]
+                try:
+                    (table, row) = key.split(':', 1)
                     if self.handlers.has_key(table):
                         client = self.redis_clients[self.CONFIG_DB]
-                        data = self.__raw_to_typed(client.hgetall(_hash))
-                        self.__fire(table, key, data)
+                        data = self.__raw_to_typed(client.hgetall(key))
+                        self.__fire(table, row, data)
+                except ValueError:
+                    pass    #Ignore non table-formated redis entries
 
     def __raw_to_typed(self, raw_data):
         if raw_data == None:
             return None
         typed_data = {}
         for key in raw_data:
+            # A column key with ending '@' is used to mark list-typed table items
+            # TODO: Replace this with a schema-based typing mechanism.
             if key.endswith("@"):
                 typed_data[key[:-1]] = raw_data[key].split(',')
             else:
@@ -141,9 +155,11 @@ class ConfigDBConnector(SonicV2Connector):
         keys = client.keys(pattern)
         data = {}
         for key in keys:
-            tokens = key.split(':', 1)
-            if len(tokens) == 2:
-                data[tokens[1]] = self.__raw_to_typed(client.hgetall(key))
+            try:
+                (_, row) = key.split(':', 1)
+                data[row] = self.__raw_to_typed(client.hgetall(key))
+            except ValueError:
+                pass    #Ignore non table-formated redis entries
         return data
 
     def set_config(self, data):
@@ -170,15 +186,13 @@ class ConfigDBConnector(SonicV2Connector):
             }
         """
         client = self.redis_clients[self.CONFIG_DB]
-        hashes = client.keys('*')
+        keys = client.keys('*')
         data = {}
-        for _hash in hashes:
-            tokens = _hash.split(':', 1)
-            if len(tokens) == 2:
-                table_name = _hash.split(':', 1)[0]
-                key = _hash.split(':', 1)[1]
-                if not data.has_key(table_name):
-                    data[table_name] = {}
-                data[table_name][key] = self.__raw_to_typed(client.hgetall(_hash))
+        for key in keys:
+            try:
+                (table_name, row) = key.split(':', 1)
+                data.setdefault(table_name, {})[row] = self.__raw_to_typed(client.hgetall(key))
+            except ValueError:
+                pass    #Ignore non table-formated redis entries
         return data
 
