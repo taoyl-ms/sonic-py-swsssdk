@@ -94,7 +94,7 @@ class ConfigDBConnector(SonicV2Connector):
 
     def __raw_to_typed(self, raw_data):
         if raw_data == None:
-            return None
+            return {}
         typed_data = {}
         for key in raw_data:
             # A column key with ending '@' is used to mark list-typed table items
@@ -157,7 +157,9 @@ class ConfigDBConnector(SonicV2Connector):
         for key in keys:
             try:
                 (_, row) = key.split(':', 1)
-                data[row] = self.__raw_to_typed(client.hgetall(key))
+                entry = self.__raw_to_typed(client.hgetall(key))
+                if entry:
+                    data[row] = entry
             except ValueError:
                 pass    #Ignore non table-formated redis entries
         return data
@@ -191,7 +193,9 @@ class ConfigDBConnector(SonicV2Connector):
         for key in keys:
             try:
                 (table_name, row) = key.split(':', 1)
-                data.setdefault(table_name, {})[row] = self.__raw_to_typed(client.hgetall(key))
+                entry = self.__raw_to_typed(client.hgetall(key))
+                if entry:
+                    data.setdefault(table_name, {})[row] = entry
             except ValueError:
                 pass    #Ignore non table-formated redis entries
         return data
