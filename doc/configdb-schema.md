@@ -27,9 +27,9 @@ Schema data is defined in ABNF [RFC5234](https://tools.ietf.org/html/rfc5234) sy
     deployment_id       = 1*2DIGIT       ; an integer between 0 and 99 to indicate the deployment enviroment of device
     bgp_asn             = 1*5DIGIT       ; local as number. it is based on the fact that currently only single instance of BGP is supported on SONiC. If multiple instances are to be supported this field will needs to be extended into another table.
     hostname            = 1*64VCHAR      
-    hwsku               = 1*64VCHAR      
-    type                = 1*64VCHAR      ; deployment type of the switch. Apps might enable/disable some features based on value of this field.
-    
+    hwsku               = 1*64VCHAR
+    type                = 1*64VCHAR      ; deployment type of the switch. Apps might enable/disable some features based on value of this field.    
+    
     Example:
     127.0.0.1:6379[4]> hgetall DEVICE_METADATA:localhost
     1) "bgp_asn"
