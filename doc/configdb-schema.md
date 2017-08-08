@@ -4,21 +4,53 @@ Schema data is defined in ABNF [RFC5234](https://tools.ietf.org/html/rfc5234) sy
     name                    = 1*DIGIT/1*ALPHA
     ref_hash_key_reference  = "[" hash_key "]" ;The token is a refernce to another valid DB key.
     hash_key                = name ; a valid key name (i.e. exists in DB)
+    LIST(type)              = *(type,)type     ; a list of values in specific type, seperated by ','
+    IPprefix       = IPv4prefix / IPv6prefix   ; an instance of this key/value pair will be repeated for each prefix
+    IPv6prefix     =                             6( h16 ":" ) ls32
+                    /                       "::" 5( h16 ":" ) ls32
+                    / [               h16 ] "::" 4( h16 ":" ) ls32
+                    / [ *1( h16 ":" ) h16 ] "::" 3( h16 ":" ) ls32
+                    / [ *2( h16 ":" ) h16 ] "::" 2( h16 ":" ) ls32
+                    / [ *3( h16 ":" ) h16 ] "::"    h16 ":"   ls32
+                    / [ *4( h16 ":" ) h16 ] "::"              ls32
+                    / [ *5( h16 ":" ) h16 ] "::"              h16
+                    / [ *6( h16 ":" ) h16 ] "::"
+     h16           = 1*4HEXDIG
+     ls32          = ( h16 ":" h16 ) / IPv4address
+     IPv4prefix    = dec-octet "." dec-octet "." dec-octet "." dec-octet "/" %d1-32
 
 ### DEVICE_METADATA table
 
+    ; Key
+    device_metadata_key = 'localhost'    ; there shall be only one instance of DEVICE_METADATA table, and the key shall always be 'localhost'
+    ; Attributes
+    deployment_id       = 1*2DIGIT       ; an integer between 0 and 99 to indicate the deployment enviroment of device
+    bgp_asn             = 1*5DIGIT       ; local as number. it is based on the fact that currently only single instance of BGP is supported on SONiC. If multiple instances are to be supported this field will needs to be extended into another table.
+    hostname            = 1*64VCHAR      
+    hwsku               = 1*64VCHAR      
+    type                = 1*64VCHAR      ; deployment type of the switch. Apps might enable/disable some features based on value of this field.
+    
+    Example:
+    127.0.0.1:6379[4]> hgetall DEVICE_METADATA:localhost
+    1) "bgp_asn"
+    2) "65000"
+    3) "hwsku"
+    4) "MSN2700"
+    5) "hostname"
+    6) "switch1"
+    7) "type"
+    8) "ToRRouter"
+    
 ### BGP_NEIGHBOR table
 
     ; Stores BGP session information
+    ; Key
     bgp_neighbor_key    = IPPrefix       ; IP address of BGP neighbor
+    ; Attributes
     asn                 = 1*5DIGIT       ; remote ASN
     admin_status        = "down" / "up"  ; admin status
     name                = 1*64VCHAR      ; neighbor host name
     peer_addr           = IPPrefix       ; local address used to peer with neighbor
-
-    ;QOS Mappings
-    map_dscp_to_tc  = ref_hash_key_reference
-    map_tc_to_queue = ref_hash_key_reference
 
     Example:
     127.0.0.1:6379[4]> keys BGP_NEIGHBOR:*
@@ -64,3 +96,94 @@ Schema data is defined in ABNF [RFC5234](https://tools.ietf.org/html/rfc5234) sy
     7) "name"
     8) "ARISTA07T2"
 
+### BGP_PEER_RANGE table
+
+    ; Key
+    bgp_peer_range_key    = 1*64VCHAR
+    ; Attributes
+    name                  = 1*64VCHAR
+    ip_range              = LIST(IPPrefix)
+
+
+### MGMT_INTERFACE table
+
+    ; Key
+    mgmt_interface_key    = IPPrefix
+    ; Attributes
+    name                  = 1*64VCHAR
+    gwaddr                = IPAddress  
+    forced_mgmt_routes    = LIST(IPPrefix)  
+    
+
+### LOOPBACK_INTERFACE table
+
+    ; Key
+    loopback_interface_key = IPPrefix
+    ; Attributes
+    name                   = 1*64VCHAR
+    
+
+### PORT table
+
+    ; Key
+    port_key              = 1*64VCHAR
+    ; Attributes
+    alias                 = 1*64VCHAR
+    MTU                   = 1*5DIGIT  
+    front_panel_index     = 1*3DIGIT      
+    
+### INTERFACE table
+
+    ; Key
+    interface_key         = IPPrefix
+    ; Attributes
+    attachto              = 1*64VCHAR
+    
+### PORTCHANNEL table
+
+    ; Key
+    portchannel_key      = 1*64VCHAR
+    ; Attributes
+    members              = LIST(1*64VCHAR)
+    
+### PORTCHANNEL_INTERFACE table
+
+    ; Key
+    portchannel_intfs_key = IPPrefix
+    ; Attributes
+    attachto              = 1*64VCHAR
+
+### VLAN table
+
+    ; Key
+    vlan_key             = 1*64VCHAR
+    ; Attributes
+    id                   = 1*5DIGIT 
+    members              = LIST(1*64VCHAR)
+    
+### VLAN_INTERFACE table
+
+    ; Key
+    vlan_interface_key    = IPPrefix
+    ; Attributes
+    attachto              = 1*64VCHAR
+
+### DEVICE_NEIGHBOR table
+
+    ; Key
+    device_neighbor_key   = 1*64VCHAR    ; neighbor host name
+    ; Attributes
+    port                  = 1*64VCHAR
+    local_port            = 1*64VCHAR
+    type                  = 1*64VCHAR
+    hwsku                 = 1*64VCHAR
+    mgmt_addr             = IPPrefix
+    lo_addr               = IPPrefix
+
+### MIRROR_SESSION table
+
+    ; Key
+    mirror_session_key    = 1*64VCHAR
+    ; Attributes
+    erspan_dst            = IPPrefix
+      
