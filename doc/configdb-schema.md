@@ -2,8 +2,8 @@ Schema data is defined in ABNF [RFC5234](https://tools.ietf.org/html/rfc5234) sy
 
 ### Definitions of common tokens
     name                    = 1*DIGIT/1*ALPHA
-    ref_hash_key_reference  = "[" hash_key "]" ;The token is a refernce to another valid DB key.
-    hash_key                = name ; a valid key name (i.e. exists in DB)
+    ref_hash_key_reference  = "[" hash_key "]" ; The token is a refernce to another valid DB key.
+    hash_key                = name             ; a valid key name (i.e. exists in DB)
     LIST(type)              = *(type,)type     ; a list of values in specific type, seperated by ','
     IPprefix       = IPv4prefix / IPv6prefix   ; an instance of this key/value pair will be repeated for each prefix
     IPv6prefix     =                             6( h16 ":" ) ls32
