@@ -40,7 +40,7 @@ class ConfigDBConnector(SonicV2Connector):
             pubsub.psubscribe(pattern)
             for item in pubsub.listen():
                 if item['type'] == 'pmessage':
-                    key = item['channel'].split('|', 1)[1]
+                    key = item['channel'].split(':', 1)[1]
                     if key == self.INIT_INDICATOR:
                         initialized = client.get(self.INIT_INDICATOR)
                         if initialized:
