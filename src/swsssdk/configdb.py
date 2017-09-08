@@ -125,13 +125,18 @@ class ConfigDBConnector(SonicV2Connector):
 
     @staticmethod
     def serialize_key(key):
-        string_types = str if sys.version_info[0] == 3 else basestring
-        return key if isinstance(key, string_types) else '|'.join(key)
+        if type(key) is tuple:
+            return '|'.join(key)
+        else:
+            return key
 
     @staticmethod
     def deserialize_key(key):
         tokens = key.split('|')
-        return tuple(tokens) if len(tokens) > 1 else tokens[0]
+        if len(tokens) > 1:
+            return tuple(tokens)
+        else:
+            return key
 
     def set_entry(self, table, key, data):
         """Write a table entry to config db.
