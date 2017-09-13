@@ -45,7 +45,7 @@ Schema data is defined in ABNF [RFC5234](https://tools.ietf.org/html/rfc5234) sy
 
     ; Stores BGP session information
     ; Key
-    bgp_neighbor_key    = IPPrefix       ; IP address of BGP neighbor
+    bgp_neighbor_key    = IPAddress      ; IP address of BGP neighbor
     ; Attributes
     asn                 = 1*5DIGIT       ; remote ASN
     admin_status        = "down" / "up"  ; admin status
@@ -108,55 +108,59 @@ Schema data is defined in ABNF [RFC5234](https://tools.ietf.org/html/rfc5234) sy
 ### MGMT_INTERFACE table
 
     ; Key
-    mgmt_interface_key    = IPPrefix
+    port_name             = 1*64VCHAR            ; name of mgmt port that the ip interface attach to
+    ip_prefix             = IPPrefix    
     ; Attributes
-    name                  = 1*64VCHAR
     gwaddr                = IPAddress  
-    forced_mgmt_routes    = LIST(IPPrefix)  
+    forced_mgmt_routes    = LIST(IPPrefix)       ; the prefixes to which route will be force to be going through mgmt port
     
 
 ### LOOPBACK_INTERFACE table
 
     ; Key
-    loopback_interface_key = IPPrefix
+    port_name              = 1*64VCHAR
+    ip_prefix              = IPPrefix
     ; Attributes
-    name                   = 1*64VCHAR
+    ; No attributes
     
 
 ### PORT table
 
     ; Key
-    port_key              = 1*64VCHAR
+    name                  = 1*64VCHAR
     ; Attributes
     alias                 = 1*64VCHAR
     MTU                   = 1*5DIGIT  
-    front_panel_index     = 1*3DIGIT      
+    front_panel_index     = 1*3DIGIT
+    speed                 = 1*5DIGIT  
     
 ### INTERFACE table
 
     ; Key
-    interface_key         = IPPrefix
+    port_name              = 1*64VCHAR
+    ip_prefix              = IPPrefix
     ; Attributes
-    attachto              = 1*64VCHAR
+    ; No attributes
     
 ### PORTCHANNEL table
 
     ; Key
-    portchannel_key      = 1*64VCHAR
+    name                  = 1*64VCHAR
     ; Attributes
-    members              = LIST(1*64VCHAR)
+    members               = LIST(1*64VCHAR)
     
 ### PORTCHANNEL_INTERFACE table
 
     ; Key
-    portchannel_intfs_key = IPPrefix
+    portchannel_name      = 1*64VCHAR
+    ip_prefix             = IPPrefix
     ; Attributes
-    attachto              = 1*64VCHAR
+    ; No attributes
 
 ### VLAN table
 
     ; Key
-    vlan_key             = 1*64VCHAR
+    name                 = 1*64VCHAR
     ; Attributes
     id                   = 1*5DIGIT 
     members              = LIST(1*64VCHAR)
@@ -164,14 +168,15 @@ Schema data is defined in ABNF [RFC5234](https://tools.ietf.org/html/rfc5234) sy
 ### VLAN_INTERFACE table
 
     ; Key
-    vlan_interface_key    = IPPrefix
+    vlan_name             = 1*64VCHAR
+    ip_prefix             = IPPrefix
     ; Attributes
-    attachto              = 1*64VCHAR
+    ; No attributes
 
 ### DEVICE_NEIGHBOR table
 
     ; Key
-    device_neighbor_key   = 1*64VCHAR    ; neighbor host name
+    neighbor_name         = 1*64VCHAR    ; neighbor host name
     ; Attributes
     port                  = 1*64VCHAR
     local_port            = 1*64VCHAR
@@ -185,5 +190,37 @@ Schema data is defined in ABNF [RFC5234](https://tools.ietf.org/html/rfc5234) sy
     ; Key
     mirror_session_key    = 1*64VCHAR
     ; Attributes
-    erspan_dst            = IPPrefix
+    src_ip                = IPPrefix
+    dst_ip                = IPPrefix
       
+### ACL_TABLE table
+
+    ; Key
+    acl_table_key        = 1*64VCHAR
+    ; Attributes
+    policy_desc   = 1*255VCHAR              ; name of the ACL policy table description
+    type          = "mirror"/"l3"           ; type of acl table, every type of
+                                            ; table defines the match/action a
+                                            ; specific set of match and actions.
+    ports         = [0-max_ports]*port_name ; the ports to which this ACL
+                                            ; table is applied, can be emtry
+                                            ; value annotations
+      
+### NTP_SERVER table
+
+    ; Key
+    server_url           =  1*128VCHAR
+    ; No attributes
+    
+### SYSLOG_SERVER table
+
+    ; Key
+    server_url           =  1*128VCHAR
+    ; No attributes
+
+### DHCP_SERVER table
+
+    ; Key
+    server_url           =  1*128VCHAR
+    ; No attributes
+    
